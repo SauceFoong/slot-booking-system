@@ -1,0 +1,92 @@
+// Prisma Schema for Slot Booking System
+// Using PostgreSQL with Docker
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum for user roles - users can have multiple roles
+enum UserRole {
+  HOST
+  GUEST
+}
+
+// Enum for slot status
+enum SlotStatus {
+  AVAILABLE
+  BOOKED
+  CANCELLED
+}
+
+// Enum for booking status
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+// User model - represents both hosts and guests
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  name      String
+  roles     UserRole[] @default([GUEST]) // Users can have multiple roles
+  
+  // Relations
+  slots     Slot[]     @relation("HostSlots") // Slots created by this user (as host)
+  bookings  Booking[]  // Bookings made by this user (as guest)
+  
+  // Timestamps
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([email])
+}
+
+// Slot model - represents available time slots created by hosts
+model Slot {
+  id        String     @id @default(uuid())
+  hostId    String
+  startTime DateTime
+  endTime   DateTime
+  status    SlotStatus @default(AVAILABLE)
+  
+  // Relations
+  host      User       @relation("HostSlots", fields: [hostId], references: [id], onDelete: Cascade)
+  booking   Booking?   // One-to-one: a slot can have at most one booking
+  
+  // Timestamps
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Indexes for efficient querying
+  @@index([hostId, startTime])
+  @@index([status, startTime])
+  @@index([hostId, status])
+}
+
+// Booking model - represents a reservation linking a user to a slot
+model Booking {
+  id        String        @id @default(uuid())
+  slotId    String        @unique // Ensures one booking per slot
+  userId    String
+  status    BookingStatus @default(CONFIRMED)
+  
+  // Relations
+  slot      Slot          @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Indexes for efficient querying
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+

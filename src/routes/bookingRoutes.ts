@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { bookingController } from '../controllers';
-import { userContextMiddleware } from '../middlewares';
+import { userContextMiddleware, bookingRateLimiter } from '../middlewares';
 
 const router = Router();
 
@@ -86,7 +86,7 @@ router.use(userContextMiddleware);
  *                     code: CONFLICT
  *                     message: You have reached the maximum of 5 active bookings
  */
-router.post('/', (req, res, next) => {
+router.post('/', bookingRateLimiter, (req, res, next) => {
   bookingController.createBooking(req as any, res).catch(next);
 });
 

@@ -1,3 +1,5 @@
+process.env.USE_BOOKING_QUEUE = 'false';
+
 import request from 'supertest';
 import app from '../../src/index';
 import { createTestHost, createTestUser, createTestSlot } from '../helpers';

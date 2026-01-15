@@ -35,12 +35,13 @@ A production-ready REST API for managing time slot bookings, built with Node.js,
          |               |                  |              |
          |               +--------+---------+              |
          |                        |                        |
-         |               +--------v---------+              |
-         |               |                  |              |
-         |               |   Middleware     |              |
-         |               | - Error Handler  |              |
-         |               | - Request Logger |              |
-         |               | - User Context   |              |
+         |               +--------v---------+     +------------------+
+         |               |                  |     |                  |
+         |               |   Middleware     |     |      Redis       |
+         |               | - Rate Limiter  -|---->| - Rate Limits    |
+         |               | - Error Handler  |     | - Queue Jobs     |
+         |               | - Request Logger |     |                  |
+         |               | - User Context   |     +------------------+
          |               |                  |              |
          |               +--------+---------+              |
          |                        |                        |
@@ -59,6 +60,21 @@ A production-ready REST API for managing time slot bookings, built with Node.js,
          |               |   Controllers    |              |
          |               | - Validation     |              |
          |               | - Request Parse  |              |
+         |               |                  |              |
+         |               +--------+---------+              |
+         |                        |                        |
+         |                        | (Optional Queue Mode)  |
+         |               +--------v---------+              |
+         |               |                  |              |
+         |               |  Booking Queue   |              |
+         |               |    (BullMQ)     -|------------->|
+         |               |                  |              |
+         |               +--------+---------+              |
+         |                        |                        |
+         |               +--------v---------+              |
+         |               |                  |              |
+         |               |     Worker       |              |
+         |               | - FCFS Processing|              |
          |               |                  |              |
          |               +--------+---------+              |
          |                        |                        |
@@ -120,28 +136,9 @@ Transaction 2: Reads updated slot, sees status = BOOKED    (returns 409)
 
 For high-demand scenarios requiring true FCFS (First-Come-First-Served) ordering, the system supports Redis + BullMQ queue:
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Controller
-    participant BookingQueue
-    participant Redis
-    participant Worker
-    participant Database
-    
-    Client->>Controller: POST /bookings
-    Controller->>BookingQueue: Add job with timestamp
-    BookingQueue->>Redis: Enqueue job
-    Controller->>BookingQueue: Wait for job result
-    Worker->>Redis: Fetch next job (FIFO)
-    Worker->>Database: Process booking (with lock)
-    Worker->>Redis: Return result
-    BookingQueue->>Controller: Job completed
-    Controller->>Client: 201 or 409 response
-```
+![ERD Diagram](assets/sequence-diagram.png)
 
-**Enable Queue Mode:**
-Add this env
+**To Enable Queue Mode, add this to you .env file:**
 ```bash
 USE_BOOKING_QUEUE=true
 ```
@@ -151,6 +148,34 @@ USE_BOOKING_QUEUE=true
 - Handles burst traffic gracefully
 - Pessimistic locking still applies as backup
 - Synchronous response maintained
+
+### Rate Limiting
+
+The booking endpoint is protected by Redis-based rate limiting to prevent spam:
+
+| Setting | Value |
+|---------|-------|
+| Limit | 10 requests per minute |
+| Scope | Per user |
+| Endpoint | POST /bookings |
+
+**Response Headers:**
+```
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 9
+X-RateLimit-Reset: 1737012345
+```
+
+**When Rate Limited (429):**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Too many requests. Please try again in 45 seconds."
+  }
+}
+```
 
 ---
 
@@ -467,6 +492,7 @@ Note: Queue tests require Redis to be running (`docker-compose up -d`).
 | concurrency.test.ts   | Race condition and double-booking tests  |
 | analytics.test.ts     | Analytics endpoint tests                 |
 | queue.test.ts         | Queue-based FCFS and high-load tests     |
+| rateLimit.test.ts     | Rate limiting tests                      |
 
 ### Test Case Summary
 
@@ -586,6 +612,8 @@ slot-booking-system/
       bookings.test.ts
       concurrency.test.ts
       analytics.test.ts
+      queue.test.ts
+      rateLimit.test.ts
     setup.ts                # Test configuration
     helpers.ts              # Test utilities
   docker-compose.yml        # Docker configuration

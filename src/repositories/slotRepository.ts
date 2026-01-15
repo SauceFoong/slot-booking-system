@@ -1,9 +1,9 @@
-import { Slot, SlotStatus, Prisma, PrismaClient } from '@prisma/client';
+import { Slot, SlotStatus, Prisma } from '@prisma/client';
 import prisma from '../utils/prisma';
 import { SlotFilters } from '../types';
 
 // Type for transaction client
-type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+type TransactionClient = Prisma.TransactionClient;
 
 export class SlotRepository {
   /**
@@ -168,13 +168,11 @@ export class SlotRepository {
     hostId: string,
     startTime: Date,
     endTime: Date,
-    excludeSlotId?: string
   ): Promise<boolean> {
     const overlapping = await prisma.slot.findFirst({
       where: {
         hostId,
         status: { not: SlotStatus.CANCELLED },
-        id: excludeSlotId ? { not: excludeSlotId } : undefined,
         OR: [
           {
             // New slot starts during existing slot

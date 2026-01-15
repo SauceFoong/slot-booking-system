@@ -1,9 +1,9 @@
-import { Booking, BookingStatus, Prisma, PrismaClient } from '@prisma/client';
+import { Booking, BookingStatus, Prisma } from '@prisma/client';
 import prisma from '../utils/prisma';
 import { BookingFilters } from '../types';
 
 // Type for transaction client
-type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+type TransactionClient = Prisma.TransactionClient;
 
 // Type for booking with slot and host info
 export type BookingWithDetails = Booking & {

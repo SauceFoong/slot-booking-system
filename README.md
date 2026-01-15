@@ -125,7 +125,7 @@ Transaction 2: Reads updated slot, sees status = BOOKED    (returns 409)
 **Relationships:**
 - User to Slot: One-to-Many (a user can host multiple slots)
 - User to Booking: One-to-Many (a user can make multiple bookings)
-- Slot to Booking: One-to-One (a slot can have at most one booking)
+- Slot to Booking: One-to-Many (a slot can have multiple bookings over time, but only one confirmed at a time)
 
 **Enums:**
 - UserRole: HOST, GUEST
@@ -339,6 +339,8 @@ curl -H "x-user-id: <user-uuid>" http://localhost:3000/api/slots
 **Business Rules:**
 - Users cannot book their own slots
 - Maximum 5 active bookings per user
+- Only one active booking per host (cannot book multiple slots from same host)
+- A slot can be re-book after it was cancelled
 - Cancellation only allowed more than 1 hour before slot start
 
 ### Analytics
@@ -542,7 +544,3 @@ slot-booking-system/
 | NODE_ENV      | Environment mode             | development |
 
 ---
-
-## License
-
-MIT

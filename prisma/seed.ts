@@ -102,6 +102,16 @@ async function main() {
     });
   }
 
+  // Add a past slot for host2 (Jan 1, 2026 10:00-11:00) for testing
+  const pastSlotStart = new Date('2026-01-01T10:00:00Z');
+  const pastSlotEnd = new Date('2026-01-01T11:00:00Z');
+  slots.push({
+    hostId: host2.id,
+    startTime: pastSlotStart,
+    endTime: pastSlotEnd,
+    status: SlotStatus.AVAILABLE,
+  });
+
   // Insert slots
   for (const slot of slots) {
     await prisma.slot.create({ data: slot });

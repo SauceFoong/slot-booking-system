@@ -93,13 +93,12 @@ export class SlotRepository {
     slots: Array<Slot & { host: { id: string; name: string } }>;
     total: number;
   }> {
-    const { hostId, startDate, endDate, page = 1, limit = 20 } = filters;
+    const { hostId, startDate, endDate, status, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
 
     const where: Prisma.SlotWhereInput = {
-      status: SlotStatus.AVAILABLE,
+      ...(status && { status }),
       startTime: {
-        gt: new Date(), // Only future slots
         ...(startDate && { gte: startDate }),
         ...(endDate && { lte: endDate }),
       },
@@ -131,7 +130,7 @@ export class SlotRepository {
     hostId: string,
     filters: { status?: SlotStatus; page?: number; limit?: number }
   ): Promise<{
-    slots: Array<Slot & { booking: { id: string; userId: string } | null }>;
+    slots: Array<Slot & { bookings: Array<{ id: string; userId: string; status: string }> }>;
     total: number;
   }> {
     const { status, page = 1, limit = 20 } = filters;
@@ -146,8 +145,9 @@ export class SlotRepository {
       prisma.slot.findMany({
         where,
         include: {
-          booking: {
-            select: { id: true, userId: true },
+          bookings: {
+            select: { id: true, userId: true, status: true },
+            where: { status: 'CONFIRMED' },
           },
         },
         orderBy: { startTime: 'asc' },

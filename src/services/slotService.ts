@@ -115,17 +115,21 @@ export class SlotService {
     const result = await slotRepository.findByHost(hostId, { ...filters, page, limit });
 
     return {
-      slots: result.slots.map((slot) => ({
-        id: slot.id,
-        hostId: slot.hostId,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        status: slot.status,
-        createdAt: slot.createdAt,
-        updatedAt: slot.updatedAt,
-        bookingId: slot.booking?.id,
-        bookedByUserId: slot.booking?.userId,
-      })),
+      slots: result.slots.map((slot) => {
+        // Get the confirmed booking (if any) - only one confirmed booking per slot
+        const confirmedBooking = slot.bookings[0];
+        return {
+          id: slot.id,
+          hostId: slot.hostId,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          status: slot.status,
+          createdAt: slot.createdAt,
+          updatedAt: slot.updatedAt,
+          bookingId: confirmedBooking?.id,
+          bookedByUserId: confirmedBooking?.userId,
+        };
+      }),
       total: result.total,
       page,
       limit,

@@ -104,6 +104,28 @@ export class BookingRepository {
   }
 
   /**
+   * Count active bookings for a user with a specific host
+   * Used to enforce one booking per host constraint
+   */
+  async countActiveBookingsWithHost(
+    userId: string,
+    hostId: string,
+    tx?: TransactionClient
+  ): Promise<number> {
+    const client = tx ?? prisma;
+    return client.booking.count({
+      where: {
+        userId,
+        status: BookingStatus.CONFIRMED,
+        slot: {
+          hostId,
+          startTime: { gt: new Date() },
+        },
+      },
+    });
+  }
+
+  /**
    * Find bookings for a user
    */
   async findByUser(
@@ -150,11 +172,14 @@ export class BookingRepository {
   }
 
   /**
-   * Find booking by slot ID
+   * Find confirmed booking by slot ID
    */
   async findBySlotId(slotId: string): Promise<Booking | null> {
-    return prisma.booking.findUnique({
-      where: { slotId },
+    return prisma.booking.findFirst({
+      where: { 
+        slotId,
+        status: BookingStatus.CONFIRMED,
+      },
     });
   }
 }

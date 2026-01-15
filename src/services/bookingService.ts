@@ -22,6 +22,7 @@ export class BookingService {
    * Business Rules:
    * - User cannot book their own slot
    * - User can have at most MAX_ACTIVE_BOOKINGS active bookings
+   * - User can only have one active booking per host
    * - Slot must be available and in the future
    */
   async createBooking(userId: string, slotId: string): Promise<BookingResponse> {
@@ -59,10 +60,22 @@ export class BookingService {
         );
       }
 
-      // 7. Update slot status to BOOKED
+      // 7. Check if user already has an active booking with this host
+      const existingBookingWithHost = await bookingRepository.countActiveBookingsWithHost(
+        userId,
+        slot.hostId,
+        tx
+      );
+      if (existingBookingWithHost > 0) {
+        throw new ConflictError(
+          'You already have an active booking with this host'
+        );
+      }
+
+      // 8. Update slot status to BOOKED
       await slotRepository.updateStatus(slotId, SlotStatus.BOOKED, tx);
 
-      // 8. Create the booking
+      // 9. Create the booking
       return bookingRepository.create(tx, { slotId, userId });
     }, {
       // Transaction options for better concurrency handling

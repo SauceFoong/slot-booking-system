@@ -73,13 +73,18 @@ router.post('/', (req, res, next) => {
  * /slots:
  *   get:
  *     tags: [Slots]
- *     summary: List available slots
+ *     summary: List slots
  *     description: |
- *       Get a paginated list of available slots. Only shows future slots with AVAILABLE status.
- *       Use filters to narrow down results.
+ *       Get a paginated list of slots. Use filters to narrow down results.
  *     security:
  *       - UserIdHeader: []
  *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [AVAILABLE, BOOKED, CANCELLED]
+ *         description: Filter by slot status
  *       - in: query
  *         name: hostId
  *         schema:
@@ -115,7 +120,7 @@ router.post('/', (req, res, next) => {
  *         description: Items per page
  *     responses:
  *       200:
- *         description: List of available slots
+ *         description: List of slots
  *         content:
  *           application/json:
  *             schema:

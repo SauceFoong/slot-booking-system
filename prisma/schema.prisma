@@ -57,7 +57,7 @@ model Slot {
   
   // Relations
   host      User       @relation("HostSlots", fields: [hostId], references: [id], onDelete: Cascade)
-  booking   Booking?   // One-to-one: a slot can have at most one booking
+  bookings  Booking[]  // One-to-many: a slot can have multiple bookings (only one confirmed at a time)
   
   // Timestamps
   createdAt DateTime   @default(now())
@@ -72,7 +72,7 @@ model Slot {
 // Booking model - represents a reservation linking a user to a slot
 model Booking {
   id        String        @id @default(uuid())
-  slotId    String        @unique // Ensures one booking per slot
+  slotId    String
   userId    String
   status    BookingStatus @default(CONFIRMED)
   
@@ -85,6 +85,7 @@ model Booking {
   updatedAt DateTime      @updatedAt
 
   // Indexes for efficient querying
+  @@index([slotId])
   @@index([userId, status])
   @@index([status, createdAt])
   @@index([createdAt])

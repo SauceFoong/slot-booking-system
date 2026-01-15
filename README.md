@@ -721,6 +721,7 @@ slot-booking-system/
 ## Agentic Workflow Write Up
 Please refer to `Agentic_Workflow_Write_up.md` in the root path
 
+---
 
 ## Core Requirements Checklist
 

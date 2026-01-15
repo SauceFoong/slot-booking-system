@@ -137,7 +137,7 @@ Transaction 2: Reads updated slot, sees status = BOOKED    (returns 409)
 
 For high-demand scenarios requiring true FCFS (First-Come-First-Served) ordering, the system supports Redis + BullMQ queue:
 
-![ERD Diagram](assets/sequence-diagram.png)
+![Sequence Diagram](assets/sequence-diagram.png)
 
 **To Enable Queue Mode, add this to you .env file:**
 ```bash
@@ -261,7 +261,7 @@ The system uses three layers to prevent double-booking:
 
 ## Entity Relationship Diagram
 
-![ERD Diagram](assets/erd-diagram.png)
+![ERD Diagram](assets/erd-diagram-v1.png)
 
 **Relationships:**
 - User to Slot: One-to-Many (a user can host multiple slots)

@@ -1,27 +1,35 @@
 import { Request, Response, NextFunction } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import type Redis from 'ioredis';
 
 // Redis connection config
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 const url = new URL(redisUrl);
 
 // Lazy-loaded Redis client
-let redisClient: import('ioredis').default | null = null;
+let redisClient: Redis | null = null;
 
-async function getRedisClient(): Promise<import('ioredis').default> {
-  if (!redisClient) {
-    const Redis = (await import('ioredis')).default;
-    redisClient = new Redis({
+const createRedisClient = async (): Promise<Redis> => {
+    const { default: Redis } = await import('ioredis');
+  
+    const client = new Redis({
       host: url.hostname,
-      port: parseInt(url.port) || 6379,
+      port: Number(url.port) || 6379,
       password: url.password || undefined,
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
-    await redisClient.connect();
-  }
-  return redisClient;
-}
+  
+    await client.connect();
+    return client;
+  };
+  
+export const getRedisClient = async (): Promise<Redis> => {
+    if (!redisClient) {
+        redisClient = await createRedisClient();
+    }
+    return redisClient;
+};
 
 interface RateLimitOptions {
   windowMs: number;      // Time window in milliseconds

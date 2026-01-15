@@ -5,6 +5,7 @@ A production-ready REST API for managing time slot bookings, built with Node.js,
 ## Table of Contents
 
 - [System Design](#system-design)
+- [Design Decisions and Trade-offs](#design-decisions-and-trade-offs)
 - [Entity Relationship Diagram](#entity-relationship-diagram)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
@@ -179,6 +180,85 @@ X-RateLimit-Reset: 1737012345
 
 ---
 
+## Design Decisions and Trade-offs
+
+### Why Pessimistic Locking (SELECT FOR UPDATE)?
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **Pessimistic Locking** (chosen) | Guarantees consistency, simple mental model, no retry logic needed | Blocks concurrent transactions, potential deadlocks |
+| Optimistic Locking | Better throughput, no blocking | Requires retry logic, complex conflict resolution |
+
+**Decision:** Booking a slot is a high-stakes operation where consistency matters more than throughput. Users expect immediate confirmation, not "please retry." Pessimistic locking ensures exactly one user wins without application-level retry complexity.
+
+### Why Redis for Rate Limiting?
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **Redis** (chosen) | Shared across instances, persistent, atomic operations | External dependency |
+| In-memory | No dependencies, fast | Lost on restart, not shared across instances |
+| Database | Already available | Too slow for rate limiting, adds load |
+
+**Decision:** Rate limiting must work across multiple server instances in production. Redis provides atomic INCR operations with TTL, making it ideal for distributed rate limiting with minimal latency.
+
+### Why BullMQ for Queue?
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **BullMQ** (chosen) | Redis-based, reliable, built-in retries, TypeScript support | Requires Redis |
+| RabbitMQ | Feature-rich, enterprise-grade | Additional infrastructure, more complex |
+| AWS SQS | Managed, scalable | Vendor lock-in, added latency |
+| In-memory queue | Simple | Lost on restart, single instance only |
+
+**Decision:** BullMQ leverages the same Redis instance used for rate limiting, avoiding additional infrastructure. It provides reliable job processing with built-in retries and dead-letter handling.
+
+### Synchronous vs Asynchronous Booking Response
+
+| Approach | User Experience | Implementation |
+|----------|-----------------|----------------|
+| **Synchronous** (chosen) | Immediate confirmation/rejection | `job.waitUntilFinished()` blocks until processed |
+| Asynchronous | Returns job ID, poll for result | Better throughput, worse UX |
+
+**Decision:** Users expect immediate feedback when booking. The queue ensures FCFS ordering while `waitUntilFinished()` maintains synchronous response semantics. This trades some throughput for better user experience.
+
+### Clean Architecture (Layered Design)
+
+```
+Controller → Service → Repository → Database
+```
+
+| Layer | Responsibility | Testability |
+|-------|----------------|-------------|
+| Controller | HTTP concerns, validation | Mock services |
+| Service | Business logic, transactions | Mock repositories |
+| Repository | Data access | Mock Prisma |
+
+**Trade-off:** More boilerplate code, but each layer is independently testable and replaceable. Business logic in services remains framework-agnostic.
+
+### Defense in Depth (Multiple Safety Nets)
+
+The system uses three layers to prevent double-booking:
+
+| Layer | Mechanism | Catches |
+|-------|-----------|---------|
+| Application | Slot status check | Most cases |
+| Transaction | `SELECT FOR UPDATE` | Race conditions |
+| Database | Partial unique index | Edge cases, bugs |
+
+**Trade-off:** Redundant checks add overhead, but booking integrity is critical. If any layer fails, others catch the error.
+
+### Fixed Window vs Sliding Window Rate Limiting
+
+| Algorithm | Accuracy | Complexity | Memory |
+|-----------|----------|------------|--------|
+| **Fixed Window** (chosen) | Good enough | Simple | O(1) per user |
+| Sliding Window Log | Precise | Complex | O(n) per user |
+| Sliding Window Counter | Good | Moderate | O(1) per user |
+
+**Decision:** Fixed window is simple and sufficient for this use case. The edge case (burst at window boundary) is acceptable given the 10 req/min limit.
+
+---
+
 ## Entity Relationship Diagram
 
 ![ERD Diagram](assets/erd-diagram.png)
@@ -236,7 +316,7 @@ X-RateLimit-Reset: 1737012345
 ### Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/SauceFoong/slot-booking-system.git
 cd slot-booking-system
 npm install
 ```

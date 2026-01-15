@@ -1,4 +1,11 @@
-import { PrismaClient, UserRole, SlotStatus } from '@prisma/client';
+import { PrismaClient, UserRole, SlotStatus, BookingStatus, Slot } from '@prisma/client';
+
+type SlotInput = {
+  hostId: string;
+  startTime: Date;
+  endTime: Date;
+  status: SlotStatus;
+};
 
 const prisma = new PrismaClient();
 
@@ -26,6 +33,46 @@ async function main() {
     },
   });
 
+  const host3 = await prisma.user.upsert({
+    where: { email: 'host3@example.com' },
+    update: {},
+    create: {
+      email: 'host3@example.com',
+      name: 'Eve Host',
+      roles: [UserRole.HOST],
+    },
+  });
+
+  const host4 = await prisma.user.upsert({
+    where: { email: 'host4@example.com' },
+    update: {},
+    create: {
+      email: 'host4@example.com',
+      name: 'Frank Host',
+      roles: [UserRole.HOST],
+    },
+  });
+
+  const host5 = await prisma.user.upsert({
+    where: { email: 'host5@example.com' },
+    update: {},
+    create: {
+      email: 'host5@example.com',
+      name: 'Grace Host',
+      roles: [UserRole.HOST],
+    },
+  });
+
+  const host6 = await prisma.user.upsert({
+    where: { email: 'host6@example.com' },
+    update: {},
+    create: {
+      email: 'host6@example.com',
+      name: 'Henry Host',
+      roles: [UserRole.HOST],
+    },
+  });
+
   const guest1 = await prisma.user.upsert({
     where: { email: 'guest1@example.com' },
     update: {},
@@ -46,11 +93,24 @@ async function main() {
     },
   });
 
-  console.log('✅ Created users:', { host1: host1.id, host2: host2.id, guest1: guest1.id, guest2: guest2.id });
+  const guest3 = await prisma.user.upsert({
+    where: { email: 'guest3@example.com' },
+    update: {},
+    create: {
+      email: 'guest3@example.com',
+      name: 'Ivan Guest',
+      roles: [UserRole.GUEST],
+    },
+  });
+
+  console.log('✅ Created users:', { 
+    host1: host1.id, host2: host2.id, host3: host3.id, host4: host4.id, host5: host5.id, host6: host6.id,
+    guest1: guest1.id, guest2: guest2.id, guest3: guest3.id 
+  });
 
   // Create sample slots for host1 (next 7 days)
   const now = new Date();
-  const slots = [];
+  const slots: SlotInput[] = [];
 
   for (let day = 1; day <= 7; day++) {
     const date = new Date(now);
@@ -118,6 +178,45 @@ async function main() {
   }
 
   console.log(`✅ Created ${slots.length} slots`);
+
+  // Create slots for the 4 new hosts (host3, host4, host5, host6) - these will be booked by guest3
+  const newHostSlots: Slot[] = [];
+  const newHosts = [host3, host4, host5, host6];
+  
+  for (let i = 0; i < newHosts.length; i++) {
+    const date = new Date(now);
+    date.setDate(date.getDate() + 10 + i); // Days 10, 11, 12, 13 from now
+    
+    const slotStart = new Date(date);
+    slotStart.setHours(11, 0, 0, 0);
+    const slotEnd = new Date(date);
+    slotEnd.setHours(12, 0, 0, 0);
+
+    const slot = await prisma.slot.create({
+      data: {
+        hostId: newHosts[i].id,
+        startTime: slotStart,
+        endTime: slotEnd,
+        status: SlotStatus.BOOKED, // Will be booked by guest3
+      },
+    });
+    newHostSlots.push(slot);
+  }
+
+  console.log(`✅ Created ${newHostSlots.length} slots for new hosts`);
+
+  // Create 4 bookings for guest3 (one with each of the new hosts)
+  for (const slot of newHostSlots) {
+    await prisma.booking.create({
+      data: {
+        slotId: slot.id,
+        userId: guest3.id,
+        status: BookingStatus.CONFIRMED,
+      },
+    });
+  }
+
+  console.log(`✅ Created 4 bookings for guest3`);
 
   console.log('🎉 Seeding completed!');
 }

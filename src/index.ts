@@ -7,6 +7,8 @@ import swaggerUi from 'swagger-ui-express';
 import routes from './routes';
 import { errorHandler, notFoundHandler, requestLogger } from './middlewares';
 import { swaggerSpec } from './config/swagger';
+import { startBookingWorker, stopBookingWorker } from './workers';
+import { closeBookingQueue } from './queues';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,12 +63,38 @@ app.use(notFoundHandler);
 // Global error handler
 app.use(errorHandler);
 
+// Check if queue is enabled
+const USE_QUEUE = process.env.USE_BOOKING_QUEUE === 'true';
+
 // Start server (only if not in test mode)
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server is running on http://localhost:${PORT}`);
-    console.log(`📚 API available at http://localhost:${PORT}/docs`);
+  // Start booking worker if queue is enabled
+  if (USE_QUEUE) {
+    startBookingWorker();
+    console.log('Queue mode enabled for bookings');
+  }
+
+  const server = app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`API documentation at http://localhost:${PORT}/docs`);
   });
+
+  // Graceful shutdown
+  const shutdown = async () => {
+    console.log('Shutting down gracefully...');
+    
+    server.close(async () => {
+      if (USE_QUEUE) {
+        await stopBookingWorker();
+        await closeBookingQueue();
+      }
+      console.log('Server closed');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 export default app;

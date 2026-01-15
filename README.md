@@ -116,6 +116,41 @@ Transaction 1: UPDATE slot, CREATE booking, COMMIT         (releases lock)
 Transaction 2: Reads updated slot, sees status = BOOKED    (returns 409)
 ```
 
+### Queue-Based Booking (Optional)
+
+For high-demand scenarios requiring true FCFS (First-Come-First-Served) ordering, the system supports Redis + BullMQ queue:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Controller
+    participant BookingQueue
+    participant Redis
+    participant Worker
+    participant Database
+    
+    Client->>Controller: POST /bookings
+    Controller->>BookingQueue: Add job with timestamp
+    BookingQueue->>Redis: Enqueue job
+    Controller->>BookingQueue: Wait for job result
+    Worker->>Redis: Fetch next job (FIFO)
+    Worker->>Database: Process booking (with lock)
+    Worker->>Redis: Return result
+    BookingQueue->>Controller: Job completed
+    Controller->>Client: 201 or 409 response
+```
+
+**Enable Queue Mode:**
+```bash
+USE_BOOKING_QUEUE=true npm run dev
+```
+
+**Benefits:**
+- True FCFS ordering (queue processes in strict order)
+- Handles burst traffic gracefully
+- Pessimistic locking still applies as backup
+- Synchronous response maintained
+
 ---
 
 ## Entity Relationship Diagram
@@ -209,7 +244,7 @@ Swagger documentation: http://localhost:3000/docs
 
 | Command                     | Description                              |
 |-----------------------------|------------------------------------------|
-| `docker-compose up -d`      | Start PostgreSQL in background           |
+| `docker-compose up -d`      | Start PostgreSQL and Redis in background |
 | `docker-compose down`       | Stop and remove containers               |
 | `docker-compose logs -f`    | View container logs                      |
 | `docker ps`                 | List running containers                  |
@@ -217,7 +252,9 @@ Swagger documentation: http://localhost:3000/docs
 
 ### Docker Compose Configuration
 
-The `docker-compose.yml` provides a PostgreSQL 16 instance:
+The `docker-compose.yml` provides:
+
+**PostgreSQL 16:**
 
 | Property        | Value                    |
 |-----------------|--------------------------|
@@ -226,6 +263,13 @@ The `docker-compose.yml` provides a PostgreSQL 16 instance:
 | Username        | postgres                 |
 | Password        | postgres                 |
 | Database        | slot_booking             |
+
+**Redis 7:**
+
+| Property        | Value                    |
+|-----------------|--------------------------|
+| Container Name  | slot-booking-redis       |
+| Port            | 6379                     |
 
 ---
 
@@ -401,11 +445,15 @@ All errors follow a consistent format:
 
 ### Running Tests
 
-| Command                  | Description                        |
-|--------------------------|------------------------------------|
-| `npm test`               | Run all tests                      |
-| `npm run test:watch`     | Run tests in watch mode            |
-| `npm run test:coverage`  | Run tests with coverage report     |
+| Command                                      | Description                        |
+|----------------------------------------------|------------------------------------|
+| `npm test`                                   | Run all tests                      |
+| `npm run test:watch`                         | Run tests in watch mode            |
+| `npm run test:coverage`                      | Run tests with coverage report     |
+| `npm test -- --testPathPattern=queue`        | Run queue tests only               |
+| `npm test -- --testPathPattern=concurrency`  | Run concurrency tests only         |
+
+Note: Queue tests require Redis to be running (`docker-compose up -d`).
 
 ### Test Files
 
@@ -415,6 +463,7 @@ All errors follow a consistent format:
 | bookings.test.ts      | Booking creation, cancellation tests     |
 | concurrency.test.ts   | Race condition and double-booking tests  |
 | analytics.test.ts     | Analytics endpoint tests                 |
+| queue.test.ts         | Queue-based FCFS and high-load tests     |
 
 ### Test Case Summary
 
@@ -454,6 +503,15 @@ All errors follow a consistent format:
 | Missing date parameters                | 400 Bad Request                     |
 | Calculate cancellation rate            | Correct percentage                  |
 | Return top hosts by booking count      | Sorted list of hosts                |
+
+**Queue Tests (requires Redis):**
+| Test Case                              | Expected Result                     |
+|----------------------------------------|-------------------------------------|
+| Process booking through queue          | Job completes, booking created      |
+| Reject duplicate booking via queue     | Second job fails with CONFLICT      |
+| 20 users book 1 slot via queue         | 1 success, 19 rejected              |
+| 25 users book 5 slots via queue        | 5 successes (one per slot)          |
+| Stress test: 30 concurrent requests    | 1 success, proper queue processing  |
 
 ### Concurrency Test Example
 
@@ -537,10 +595,12 @@ slot-booking-system/
 
 ## Environment Variables
 
-| Variable      | Description                  | Default     |
-|---------------|------------------------------|-------------|
-| DATABASE_URL  | PostgreSQL connection string | Required    |
-| PORT          | Server port                  | 3000        |
-| NODE_ENV      | Environment mode             | development |
+| Variable            | Description                      | Default                   |
+|---------------------|----------------------------------|---------------------------|
+| DATABASE_URL        | PostgreSQL connection string     | Required                  |
+| PORT                | Server port                      | 3000                      |
+| NODE_ENV            | Environment mode                 | development               |
+| REDIS_URL           | Redis connection string          | redis://localhost:6379    |
+| USE_BOOKING_QUEUE   | Enable queue-based booking       | false                     |
 
 ---

@@ -1,26 +1,52 @@
 import { Response } from 'express';
 import { bookingService } from '../services';
-import { AuthenticatedRequest, ApiResponse, NotFoundError } from '../types';
+import { AuthenticatedRequest, ApiResponse, AppError, NotFoundError } from '../types';
 import { createBookingSchema, bookingFiltersSchema } from '../utils/validation';
 import { StatusCodes } from 'http-status-codes';
+import { addBookingJob } from '../queues';
+
+// Check if queue is enabled
+const USE_QUEUE = process.env.USE_BOOKING_QUEUE === 'true';
 
 export class BookingController {
   /**
    * POST /bookings
    * Book an available slot
+   * Uses queue for FCFS ordering when USE_BOOKING_QUEUE=true
    */
   async createBooking(req: AuthenticatedRequest, res: Response): Promise<void> {
     const { userId } = req.user;
     const input = createBookingSchema.parse(req.body);
 
-    const booking = await bookingService.createBooking(userId, input.slotId);
+    if (USE_QUEUE) {
+      // Queue-based booking for true FCFS
+      const result = await addBookingJob(userId, input.slotId);
 
-    const response: ApiResponse = {
-      success: true,
-      data: booking,
-    };
+      if (!result.success && result.error) {
+        throw new AppError(
+          result.error.statusCode,
+          result.error.code,
+          result.error.message
+        );
+      }
 
-    res.status(StatusCodes.CREATED).json(response);
+      const response: ApiResponse = {
+        success: true,
+        data: result.data,
+      };
+
+      res.status(StatusCodes.CREATED).json(response);
+    } else {
+      // Direct booking (original behavior)
+      const booking = await bookingService.createBooking(userId, input.slotId);
+
+      const response: ApiResponse = {
+        success: true,
+        data: booking,
+      };
+
+      res.status(StatusCodes.CREATED).json(response);
+    }
   }
 
   /**

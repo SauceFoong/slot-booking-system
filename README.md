@@ -1,6 +1,6 @@
 # Slot Booking System
 
-A production-ready REST API for managing time slot bookings, built with Node.js, Express, TypeScript, and Prisma. The system handles concurrent booking requests using pessimistic locking and maintains data consistency under high load.
+A scalable slot booking REST API built with Node.js, Express, TypeScript, PostgreSQL, Prisma, and Redis. Handles concurrent booking requests with pessimistic locking, processes high-demand traffic via BullMQ queues (FCFS), and protects endpoints with Redis-based rate limiting.
 
 ## Table of Contents
 
@@ -726,7 +726,7 @@ Please refer to `Agentic_Workflow_Write_up.md` in the root path
 ## Core Requirements Checklist
 
 
-### Slot Management
+### 1. Slot Management
 
 | Requirement                                           | Status | Evidence                        |
 | ----------------------------------------------------- | ------ | ------------------------------- |
@@ -738,7 +738,7 @@ Please refer to `Agentic_Workflow_Write_up.md` in the root path
 
 ---
 
-### Booking Flow
+### 2. Booking Flow
 
 | Requirement                                                 | Status | Evidence                      |
 | ----------------------------------------------------------- | ------ | ----------------------------- |
@@ -749,7 +749,7 @@ Please refer to `Agentic_Workflow_Write_up.md` in the root path
 
 ---
 
-### Concurrency & Race Conditions (Critical)
+### 3. Concurrency & Race Conditions (Critical)
 
 | Requirement                        | Status | Evidence                                   |
 | ---------------------------------- | ------ | ------------------------------------------ |
@@ -761,7 +761,7 @@ Please refer to `Agentic_Workflow_Write_up.md` in the root path
 
 ---
 
-### Constraints & Business Rules
+### 4. Constraints & Business Rules
 
 | Requirement                                         | Status | Evidence           |
 | --------------------------------------------------- | ------ | ------------------ |
@@ -773,7 +773,7 @@ Please refer to `Agentic_Workflow_Write_up.md` in the root path
 
 ---
 
-### High-Demand Booking Flow (Critical)
+### 5. High-Demand Booking Flow (Critical)
 
 | Requirement                          | Status | Evidence                       |
 | ------------------------------------ | ------ | ------------------------------ |
@@ -786,7 +786,7 @@ Please refer to `Agentic_Workflow_Write_up.md` in the root path
 
 ---
 
-### Analytics Endpoint
+### 6. Analytics Endpoint
 
 | Requirement                  | Status | Evidence                   |
 | ---------------------------- | ------ | -------------------------- |
@@ -799,7 +799,7 @@ Please refer to `Agentic_Workflow_Write_up.md` in the root path
 
 ---
 
-### API Endpoints (Minimum Required)
+### 7. API Endpoints (Minimum Required)
 
 | Endpoint               | Status |
 | ---------------------- | ------ |
@@ -813,7 +813,7 @@ Please refer to `Agentic_Workflow_Write_up.md` in the root path
 
 ---
 
-### Non-Functional Requirements
+### 8. Non-Functional Requirements
 
 - [x] **Appropriate HTTP status codes**  
   _Evidence:_ `200, 201, 400, 401, 403, 404, 409, 429, 500`
@@ -830,7 +830,7 @@ Please refer to `Agentic_Workflow_Write_up.md` in the root path
 
 ---
 
-### Deliverables
+### 9. Deliverables
 
 
 | Deliverable                        | Status | Evidence                       |
@@ -847,7 +847,7 @@ Please refer to `Agentic_Workflow_Write_up.md` in the root path
 
 ---
 
-### Stretch Goals (Optional)
+### 10. Stretch Goals (Optional)
 
 | Goal              | Status            |
 | ----------------- | ----------------- |

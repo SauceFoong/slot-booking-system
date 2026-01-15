@@ -14,6 +14,8 @@ A production-ready REST API for managing time slot bookings, built with Node.js,
 - [API Endpoints](#api-endpoints)
 - [Test Cases](#test-cases)
 - [Project Structure](#project-structure)
+- [Agentic Workflow Write Up](#agentic-workflow-write-up)
+- [Core Requirements Checklist](#core-requirements-checklist)
 
 ---
 
@@ -718,3 +720,138 @@ slot-booking-system/
 
 ## Agentic Workflow Write Up
 Please refer to `Agentic_Workflow_Write_up.md` in the root path
+
+
+## Core Requirements Checklist
+
+
+### Slot Management
+
+| Requirement                                           | Status | Evidence                        |
+| ----------------------------------------------------- | ------ | ------------------------------- |
+| Hosts can create available slots with start/end times | ✅ Done | `POST /api/slots`               |
+| Hosts can view their own slots (all statuses)         | ✅ Done | `GET /api/slots/host`           |
+| Hosts can cancel or delete unbooked slots             | ✅ Done | `DELETE /api/slots/:id`         |
+| Slots cannot overlap for the same host                | ✅ Done | PostgreSQL exclusion constraint |
+
+
+---
+
+### Booking Flow
+
+| Requirement                                                 | Status | Evidence                      |
+| ----------------------------------------------------------- | ------ | ----------------------------- |
+| Users can view available slots (filter by host, date range) | ✅ Done | `GET /api/slots` with filters |
+| Users can book an available slot                            | ✅ Done | `POST /api/bookings`          |
+| Users can view their own bookings                           | ✅ Done | `GET /api/bookings`           |
+| Users can cancel their booking (cancellation window logic)  | ✅ Done | `DELETE /api/bookings/:id`    |
+
+---
+
+### Concurrency & Race Conditions (Critical)
+
+| Requirement                        | Status | Evidence                                   |
+| ---------------------------------- | ------ | ------------------------------------------ |
+| Double-booking prevention          | ✅ Done | Pessimistic locking + partial unique index |
+| Consistent state under concurrency | ✅ Done | `SELECT FOR UPDATE` in transaction         |
+| Clear feedback on race condition   | ✅ Done | `409 Conflict` response                    |
+| Concurrency approach documented    | ✅ Done | README – *Concurrency Handling*            |
+
+
+---
+
+### Constraints & Business Rules
+
+| Requirement                                         | Status | Evidence           |
+| --------------------------------------------------- | ------ | ------------------ |
+| User cannot book their own slot                     | ✅ Done | `bookings.test.ts` |
+| Slots in the past cannot be booked                  | ✅ Done | `bookings.test.ts` |
+| Cancellation only allowed up to 1 hour before start | ✅ Done | `bookings.test.ts` |
+| Max 5 active bookings per user                      | ✅ Done | `bookings.test.ts` |
+
+
+---
+
+### High-Demand Booking Flow (Critical)
+
+| Requirement                          | Status | Evidence                       |
+| ------------------------------------ | ------ | ------------------------------ |
+| System remains responsive under load | ✅ Done | BullMQ queue (FCFS)            |
+| Bookings processed fairly (FCFS)     | ✅ Done | Queue concurrency = 1          |
+| Users receive clear feedback         | ✅ Done | `waitUntilFinished`            |
+| No double-bookings under heavy load  | ✅ Done | `queue.test.ts`                |
+| Approach documented                  | ✅ Done | README – *Queue-Based Booking* |
+
+
+---
+
+### Analytics Endpoint
+
+| Requirement                  | Status | Evidence                   |
+| ---------------------------- | ------ | -------------------------- |
+| Analytics endpoint available | ✅ Done | `GET /api/admin/analytics` |
+| Returns total bookings       | ✅ Done | `analytics.test.ts`        |
+| Returns cancellation rate    | ✅ Done | `analytics.test.ts`        |
+| Returns bookings per day     | ✅ Done | `analytics.test.ts`        |
+| Returns top 5 busiest hosts  | ✅ Done | `analytics.test.ts`        |
+
+
+---
+
+### API Endpoints (Minimum Required)
+
+| Endpoint               | Status |
+| ---------------------- | ------ |
+| `POST /slots`          | ✅ Done |
+| `GET /slots`           | ✅ Done |
+| `POST /bookings`       | ✅ Done |
+| `GET /bookings`        | ✅ Done |
+| `DELETE /bookings/:id` | ✅ Done |
+| `GET /admin/analytics` | ✅ Done |
+
+
+---
+
+### Non-Functional Requirements
+
+- [x] **Appropriate HTTP status codes**  
+  _Evidence:_ `200, 201, 400, 401, 403, 404, 409, 429, 500`
+
+| Requirement                        | Status | Evidence                                    |
+| ---------------------------------- | ------ | ------------------------------------------- |
+| Proper HTTP status codes           | ✅ Done | 200, 201, 400, 401, 403, 404, 409, 429, 500 |
+| Clear, actionable error messages   | ✅ Done | Consistent error format                     |
+| Testing strategy documented        | ✅ Done | README – *Test Cases*                       |
+| Critical behavior covered by tests | ✅ Done | 6 test files                                |
+| Concurrent booking test            | ✅ Done | `concurrency.test.ts`                       |
+| Single command to run tests        | ✅ Done | `npm test`                                  |
+
+
+---
+
+### Deliverables
+
+
+| Deliverable                        | Status | Evidence                       |
+| ---------------------------------- | ------ | ------------------------------ |
+| Source code in Git repository      | ✅ Done | GitHub repository              |
+| Setup and run instructions         | ✅ Done | README – *Quick Start*         |
+| API documentation                  | ✅ Done | README + Swagger (`/docs`)     |
+| Design decisions & trade-offs      | ✅ Done | README section                 |
+| Concurrency handling approach      | ✅ Done | README section                 |
+| High-demand / scalability approach | ✅ Done | README – *Queue-Based Booking* |
+| Testing strategy                   | ✅ Done | README – *Test Cases*          |
+| Agentic workflow write-up          | ✅ Done | `Agentic_Workflow_Write_up.md` |
+
+
+---
+
+### Stretch Goals (Optional)
+
+| Goal              | Status            |
+| ----------------- | ----------------- |
+| Recurring slots   | ❌ Not implemented |
+| Waitlist          | ❌ Not implemented |
+| Timezone handling | ❌ Not implemented |
+| Rate limiting     | ✅ Done (bonus)    |
+

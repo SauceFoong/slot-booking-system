@@ -141,8 +141,9 @@ sequenceDiagram
 ```
 
 **Enable Queue Mode:**
+Add this env
 ```bash
-USE_BOOKING_QUEUE=true npm run dev
+USE_BOOKING_QUEUE=true
 ```
 
 **Benefits:**
@@ -223,6 +224,8 @@ Create a `.env` file:
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/slot_booking?schema=public"
 PORT=3000
 NODE_ENV=development
+REDIS_URL=redis://localhost:6379
+USE_BOOKING_QUEUE=true
 ```
 
 ### Start Database and Server

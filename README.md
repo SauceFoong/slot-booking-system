@@ -715,3 +715,6 @@ slot-booking-system/
 | USE_BOOKING_QUEUE   | Enable queue-based booking       | false                     |
 
 ---
+
+## Agentic Workflow Write Up
+Please refer to `Agentic_Workflow_Write_up.md` in the root path

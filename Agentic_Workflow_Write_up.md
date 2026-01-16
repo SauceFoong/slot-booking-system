@@ -7,7 +7,17 @@
 
 ## 2. Prompts and Requests
 
-I used AI to assist with scaffolding and accelerating development. The prompts included:
+I used AI to assist with planning, scaffolding and accelerating development. I mainly use Cursor: `Plan` / `Ask` / `Agent` features to finish this project. 
+
+`Plan`: To draft the execution plan before the implementation started.
+
+`Ask`: Ask any questions to clear up my doubts
+
+`Agent`: To write codes, test cases, and updating the readme or drafting diagram.
+
+
+
+The prompts included:
 
 - Scaffolding the initial project structure based on the chosen tech stack  
   (Node.js, TypeScript, Prisma ORM, PostgreSQL)
